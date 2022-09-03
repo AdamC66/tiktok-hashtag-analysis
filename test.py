@@ -3,6 +3,7 @@ from dataclasses import asdict, dataclass, is_dataclass
 import logging
 import json
 import csv
+import xlsxwriter
 
 class EnhancedJSONEncoder(json.JSONEncoder):
         def default(self, o):
@@ -93,6 +94,7 @@ class TikTokHashTagAnalyzer(object):
         occs = {"total": len(self.videos), "top_n": []}
         occs["top_n"] = [[ele[i] for ele in self.tags[0 : min(len(self.videos), 10)]] for i in range(2)]
         self.tag_occurrences = occs
+        return occs
 
     def print_occurrences(self):
         """Print information about the top n hashtags and their frequencies."""
@@ -129,6 +131,111 @@ class TikTokHashTagAnalyzer(object):
                     ]
                 )    
     
+    def _write_xls_row(self, workbook, worksheet, row_data, row_num, is_header=False):
+        '''
+            worksheet: xlsxwriter worksheet
+            row_data: list[str]
+            row_num: int
+        '''
+        cell_format = workbook.add_format()
+        if is_header:
+            cell_format.set_bold(True)
+        for idx, entry in enumerate(row_data):
+                            # row  column  val
+            worksheet.write(row_num, idx, entry, cell_format)
+    
+    def _dump_xlsx_raw_data(self, workbook):
+        header = ["id", 
+                  "desc", 
+                  "hashtags",
+                  "playCount",
+                  "shareCount",
+                  "commentCount",
+                  "playAddr"
+                  ]
+        worksheet = workbook.add_worksheet('Data')
+        worksheet.set_column('A:A', 25) 
+        worksheet.set_column('B:B', 60) 
+        worksheet.set_column('C:C', 50)
+        worksheet.set_column('D:D', 15) 
+        worksheet.set_column('E:E', 15) 
+        worksheet.set_column('F:F', 10) 
+        worksheet.set_column('G:G', 15)
+         
+        
+        self._write_xls_row(workbook, worksheet, header,0, True)
+        
+        def get_play_address_hyperlink(play_address):
+            if not play_address:
+                return ""
+            return f'=HYPERLINK("{play_address}", "Video Link")'
+        
+        for idx, entry in enumerate(self.videos):
+            if is_dataclass(entry):
+                entry = asdict(entry)
+            stats = entry.get("stats")
+            if is_dataclass(stats):
+                stats = asdict(stats)
+                
+            self._write_xls_row(
+                workbook,
+                worksheet,
+                [
+                    entry.get("id", ""),
+                    entry.get("desc", ""),
+                    ", ".join(h["name"] for h in entry.get("hashtags", [])),
+                    stats.get("playCount",""),
+                    stats.get("shareCount",""),
+                    stats.get("commentCount",""),
+                    get_play_address_hyperlink(entry.get("playAddr","")),
+                ],
+                idx + 1
+            )
+
+    def _dump_xlsx_occurrences(self, workbook):
+        test = {'total': 483, 
+                'top_n': [
+                    ['toronto', 'fyp', 'foryou', 'foryoupage', 'canada', 'viral', 'fypシ', 'haircut', 'ontario', 'comedy'], 
+                          [483, 263, 103, 92, 76, 55, 41, 34, 31, 31]]
+                }
+        worksheet = workbook.add_worksheet('Occurrences')
+        worksheet.set_column('A:A', 15) 
+        worksheet.set_column('B:B', 15) 
+        worksheet.set_column('C:C', 15)
+        worksheet.set_column('D:D', 15) 
+        header = ["Rank", 
+                  "Hashtag", 
+                  "Occurrences",
+                  "Frequency",
+                  ]
+        occurrences_data= self.get_occurrences()
+        self._write_xls_row(workbook, worksheet, header,0, True)
+        for idx, hashtag in enumerate(occurrences_data["top_n"][0]):
+            occurrences = occurrences_data["top_n"][1][idx]
+            self._write_xls_row(
+                workbook,
+                worksheet,
+                [
+                    idx,
+                    hashtag,
+                    occurrences,
+                    occurrences/occurrences_data["total"],
+                ],
+                idx+1,
+            )
+
+        chart = workbook.add_chart({'type': 'column'})
+        chart.add_series({
+            'values': '=$Occurrences!$D$2:$D$11',
+        })
+        worksheet.insert_chart('G3', chart)
+        
+    def export_xlsx(self):
+        workbook = xlsxwriter.Workbook(f'{self.hashtag}.xlsx')
+        self._dump_xlsx_occurrences(workbook)
+        self._dump_xlsx_raw_data(workbook)
+        workbook.close()
+    
 if __name__ == "__main__":
     hashtag = "toronto"
     res = TikTokHashTagAnalyzer(hashtag)
@@ -141,5 +248,6 @@ if __name__ == "__main__":
     except FileNotFoundError:
         res.get_videos()
     res.get_hashtags()
+    print(res.get_occurrences())
+    res.export_xlsx()
     res.print_occurrences()
-    res.to_csv()
