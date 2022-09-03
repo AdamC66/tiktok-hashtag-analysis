@@ -9,6 +9,7 @@ import random
 from http import cookiejar
 from urllib.parse import quote, urlencode
 import json
+import csv
 from TikTokApi import TikTokApi
 from TikTokApi.api.user import User
 from TikTokApi.browser_utilities.browser import browser
@@ -133,7 +134,10 @@ class TikTokHashTagAnalyzer(object):
         if not self.videos:
             raise ValueError(f"Empty videos, run get_videos() first, no hashtags could be extracted.")
         hashtags = {}
-        tags = [set([tag.name for tag in ele.hashtags]) for ele in self.videos]
+        try:
+            tags = [set([tag.name for tag in ele.hashtags]) for ele in self.videos]
+        except AttributeError:
+            tags = [set([tag["name"] for tag in ele["hashtags"]]) for ele in self.videos]
         {
             tag: (
                 1
@@ -194,6 +198,23 @@ class TikTokHashTagAnalyzer(object):
             row_number += 1
         print(f"Total posts: {total_posts}")
 
+    def to_csv(self):
+        with open(f"{self.hashtag}.csv", 'w', encoding='UTF8', newline='') as f:
+            writer = csv.writer(f)
+            
+            header = ["id", "desc", "hashtags", "playAddr"]
+            writer.writerow(header)
+            for entry in self.videos:
+                writer.writerow(
+                    [
+                        entry.get("id", ""),
+                        entry.get("desc", ""),
+                        ", ".join(h for h in entry.get("hashTags", [])),
+                        entry.get("playAddr", ""),
+                        
+                    ]
+                )    
+    
 if __name__ == "__main__":
     hashtag = "london"
     res = TikTokHashTagAnalyzer(hashtag)
@@ -207,3 +228,4 @@ if __name__ == "__main__":
         res.get_videos()
     res.get_hashtags()
     res.print_occurrences()
+    res.to_csv()
