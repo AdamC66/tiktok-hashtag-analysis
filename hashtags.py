@@ -1,4 +1,5 @@
 from dataclasses import asdict, dataclass, is_dataclass
+from tkinter import Y
 from TikTokApi import TikTokApi
 import logging
 import json
@@ -72,6 +73,7 @@ class TikTokHashTagAnalyzer(object):
     tags = []
     tag_occurrences = []
     video_count = 3000
+    filename = "none"
     
     def __init__(self, hashtag=None, user=None):
         super().__init__()
@@ -84,6 +86,10 @@ class TikTokHashTagAnalyzer(object):
         
         self.hashtag = hashtag
         self.user = user
+        
+        self.filename = ""
+        self.filename += "U" if user else "H"
+        self.filename += f"_{hashtag or user}"
         
     def get_hashtags(self):
         if not self.videos:
@@ -173,7 +179,7 @@ class TikTokHashTagAnalyzer(object):
         print(f"Total posts: {total_posts}")
 
     def to_csv(self):
-        with open(f"{self.hashtag or self.user}.csv", 'w', encoding='UTF8', newline='') as f:
+        with open(f"{self.filename}.csv", 'w', encoding='UTF8', newline='') as f:
             writer = csv.writer(f)
             
             header = [
@@ -232,36 +238,53 @@ class TikTokHashTagAnalyzer(object):
     
     
 if __name__ == "__main__":
-    hashtag = "italy"
-    hashtag_results = TikTokHashTagAnalyzer(hashtag=hashtag)
-    try:
-        with open(f'{hashtag}.json') as json_file:
-            data = json.load(json_file)
-            hashtag_results.videos = data
-        if not data:
-            hashtag_results.get_videos()
-    except FileNotFoundError:
-        hashtag_results.get_videos()
-    hashtag_results.get_hashtags()
-    print(hashtag_results.get_occurrences())
-    hashtag_results.to_csv()
-    hashtag_results.print_occurrences()
-    
-    
-    
-    user = "weratedogs"
-    user_results = TikTokHashTagAnalyzer(user=user)
-    try:
-        with open(f'{user}.json') as json_file:
-            data = json.load(json_file)
-            user_results.videos = data
-        if not data:
-            user_results.get_videos()
-    except FileNotFoundError:
-        user_results.get_videos()
-    user_results.get_hashtags()
-    print(user_results.get_occurrences())
-    user_results.to_csv()
-    user_results.print_occurrences()
+    search_type=""
+    search_term=""
+    print("###########################################")
+    print("#            TIK TOK SCRAPER              #")
+    print("###########################################")
+    print()
+    print()    
+    while not search_type:
+        print("Lookup By User(U) or HashTag(H)")
+        val =input("H / U? : ")
+        if val == "H" or val == "U":
+            search_type = val
+        print()
+    print()
+    while not search_term:
+        print("Enter Search Term")
+        val =input("Search : ")
+        search_term = val
+    print()
 
-    
+    hashtag = "italy"
+    if search_type == "H":
+        results = TikTokHashTagAnalyzer(hashtag=search_term)
+    elif search_type == "U":
+        results = TikTokHashTagAnalyzer(user=search_term)
+        
+    try:
+        with open(f'{search_type}_{search_term}.json') as json_file:
+            print(f"Previous Data Found for Search Type {search_type}/ Search Term {search_term}")
+            print("Rerun analysis on this data?")
+            rerun = None
+            while rerun is None:
+                input("Y/N")
+                if input == "Y":
+                    rerun = True
+                elif input == "N":
+                    rerun = False
+            if rerun:
+                data = json.load(json_file)
+                results.videos = data
+                if not data:
+                    results.get_videos()
+            else:
+                results.get_videos()
+    except FileNotFoundError:
+        results.get_videos()
+    results.get_hashtags()
+    print(results.get_occurrences())
+    results.to_csv()
+    results.print_occurrences()
