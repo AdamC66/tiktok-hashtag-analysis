@@ -4,20 +4,22 @@ from TikTokApi import TikTokApi
 import logging
 import json
 import csv
-
+import random 
+import string
 
 # ###########################################
 #            SETUP INSTRUCTIONS
 # ###########################################
 
 # Go to www.tiktok.com
+# login if you are not. logout and log back in if you are
 # Right click on the page and select "Inspect"
 # In the Inspector, Click "Application" in the top toolbar
 # On the left side under "Storage" select "Cookies", then "https://www.tiktok.com"
 # Copy the value of cookie "s_v_web_id" (it should start with "verify_"), and paste it below
 # DO NOT COMMIT THIS TOKEN
 
-verifyFp="YOUR_COOKIE_HERE"
+ms_token="verify_l89fyzfr_0VK1rBdz_wpUW_4lhi_8FXL_fcal1HUqpLra"
 
 # ###########################################   
 # ###########################################
@@ -72,7 +74,7 @@ class TikTokHashTagAnalyzer(object):
     videos = []
     tags = []
     tag_occurrences = []
-    video_count = 3000
+    video_count = 5000
     filename = "none"
     
     def __init__(self, hashtag=None, user=None):
@@ -113,7 +115,7 @@ class TikTokHashTagAnalyzer(object):
         return sorted(hashtags.items(), key=lambda e: e[1], reverse=True)
 
     def get_videos(self):
-        api = TikTokApi(logging_level=logging.ERROR, custom_verifyFp=verifyFp)
+        api = TikTokApi(logging_level=logging.ERROR, custom_verify_fp=ms_token, force_verify_fp_on_cookie_header=True)
         if self.hashtag:
             tag = api.hashtag(name=self.hashtag)
             videos = [v for v in tag.videos(count=self.video_count)]
@@ -243,7 +245,7 @@ if __name__ == "__main__":
     print("###########################################")
     print("#            TIK TOK SCRAPER              #")
     print("###########################################")
-    print()
+    print("       Press Ctrl+C/ Cmd+C to Exit         ")
     print()    
     while not search_type:
         print("Lookup By User(U) or HashTag(H)")
