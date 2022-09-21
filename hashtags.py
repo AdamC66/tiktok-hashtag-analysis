@@ -1,12 +1,13 @@
 from dataclasses import asdict, dataclass, is_dataclass
 from tkinter import Y
+from turtle import down
 from TikTokApi import TikTokApi
 import logging
 import json
 import csv
 import random 
 import string
-
+import sys
 # ###########################################
 #            SETUP INSTRUCTIONS
 # ###########################################
@@ -19,7 +20,7 @@ import string
 # Copy the value of cookie "s_v_web_id" (it should start with "verify_"), and paste it below
 # DO NOT COMMIT THIS TOKEN
 
-ms_token="verify_l89fyzfr_0VK1rBdz_wpUW_4lhi_8FXL_fcal1HUqpLra"
+ms_token="verify_l8asmszq_gBF6JmmI_1rIN_4sWj_AanT_hGbhrf1GQmIu"
 
 # ###########################################   
 # ###########################################
@@ -61,6 +62,7 @@ class TikTokHashtag:
 @dataclass
 class TikTokVideo:
     id: str
+    create_time: str
     desc: str
     hashtags: list[TikTokHashtag]
     stats: VideoStats
@@ -114,7 +116,7 @@ class TikTokHashTagAnalyzer(object):
         self.tags = sorted(hashtags.items(), key=lambda e: e[1], reverse=True)
         return sorted(hashtags.items(), key=lambda e: e[1], reverse=True)
 
-    def get_videos(self):
+    def get_videos(self, download=False):
         api = TikTokApi(logging_level=logging.ERROR, custom_verify_fp=ms_token, force_verify_fp_on_cookie_header=True)
         if self.hashtag:
             tag = api.hashtag(name=self.hashtag)
@@ -132,10 +134,10 @@ class TikTokHashTagAnalyzer(object):
             info = video.info()
             author = video.as_dict["author"]
             sound=video.as_dict["music"]
-            
             tiktok_video = TikTokVideo(
                 id=video.id,
                 desc=info["desc"],
+                create_time=str(video.create_time),
                 hashtags=[TikTokHashtag(id=h.id,name=h.name ) for h in video.hashtags],
                 playAddr=info["video"]['playAddr'],
                 stats=VideoStats(**video.stats),
@@ -154,10 +156,21 @@ class TikTokHashTagAnalyzer(object):
                 )
             )
             res.append(tiktok_video)
+            
+            if download:
+                self.download_video(video)
+            
         self.videos = res
-        with open(f'{self.hashtag}.json', 'w') as outfile:
+        with open(f'{self.filename}.json', 'w') as outfile:
             json.dump(res, outfile, cls=EnhancedJSONEncoder)
-        
+    
+    def download_video(self, video):
+       
+        video_data = video.bytes()
+        video_name = video.id
+        with open(f"{video_name}.mp4", "wb") as out_file:
+            out_file.write(video_data)
+    
     def get_occurrences(self):
         occs = {"total": len(self.videos), "top_n": []}
         occs["top_n"] = [[ele[i] for ele in self.tags[0 : min(len(self.videos), 10)]] for i in range(2)]
@@ -182,13 +195,13 @@ class TikTokHashTagAnalyzer(object):
 
     def to_csv(self):
         with open(f"{self.filename}.csv", 'w', encoding='UTF8', newline='') as f:
-            writer = csv.writer(f)
-            
+            writer = csv.writer(f)            
             header = [
                     # Video Info
                     "Video Id", 
                     "Description", 
                     "Hashtags",
+                    "Create Time"
                     # Author Info
                     "Author Id",
                     "Author",
@@ -198,7 +211,7 @@ class TikTokHashTagAnalyzer(object):
                     "Sound ID",
                     "Sound Name",
                     "Sound Artist",
-                    "Sound Original"
+                    "Sound Original",
                     # Stats
                     "Play Count",
                     "Share Count",
@@ -219,7 +232,7 @@ class TikTokHashTagAnalyzer(object):
                         entry.get("id", ""),
                         entry.get("desc", ""),
                         ", ".join(h["name"] for h in entry.get("hashtags", [])),
-                        
+                        entry.get("create_time", ""),
                         author.get("id"),
                         author.get("uniqueId"),
                         author.get("nickname"),
@@ -240,6 +253,7 @@ class TikTokHashTagAnalyzer(object):
     
     
 if __name__ == "__main__":
+
     search_type=""
     search_term=""
     print("###########################################")
@@ -259,23 +273,20 @@ if __name__ == "__main__":
         val =input("Search : ")
         search_term = val
     print()
-
-    hashtag = "italy"
     if search_type == "H":
         results = TikTokHashTagAnalyzer(hashtag=search_term)
     elif search_type == "U":
-        results = TikTokHashTagAnalyzer(user=search_term)
-        
+        results = TikTokHashTagAnalyzer(user=search_term)    
     try:
         with open(f'{search_type}_{search_term}.json') as json_file:
             print(f"Previous Data Found for Search Type {search_type}/ Search Term {search_term}")
             print("Rerun analysis on this data?")
             rerun = None
             while rerun is None:
-                input("Y/N")
-                if input == "Y":
+                val = input("Y/N")
+                if val == "Y":
                     rerun = True
-                elif input == "N":
+                elif val == "N":
                     rerun = False
             if rerun:
                 data = json.load(json_file)
@@ -283,10 +294,28 @@ if __name__ == "__main__":
                 if not data:
                     results.get_videos()
             else:
-                results.get_videos()
+                should_download = None
+                while should_download is None:
+                    print("Should Videos be Downloaded? (This May Take a While)")
+                    val = input("Y/N: ")
+                    
+                    if val == "Y":
+                        should_download = True
+                    elif val == "N":
+                        should_download = False
+                results.get_videos(download=should_download)
     except FileNotFoundError:
-        results.get_videos()
+        should_download = None
+        while should_download is None:
+            print("Should Videos be Downloaded? (This May Take a While)")
+            val = input("Y/N: ")
+            if val == "Y":
+                should_download = True
+            elif val == "N":
+                should_download = False
+        results.get_videos(download=should_download)
     results.get_hashtags()
     print(results.get_occurrences())
     results.to_csv()
     results.print_occurrences()
+    sys.exit()
