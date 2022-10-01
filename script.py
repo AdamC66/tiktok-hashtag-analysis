@@ -8,22 +8,6 @@ import csv
 import random 
 import string
 import sys
-# ###########################################
-#            SETUP INSTRUCTIONS
-# ###########################################
-
-# Go to www.tiktok.com
-# login if you are not. logout and log back in if you are
-# Right click on the page and select "Inspect"
-# In the Inspector, Click "Application" in the top toolbar
-# On the left side under "Storage" select "Cookies", then "https://www.tiktok.com"
-# Copy the value of cookie "s_v_web_id" (it should start with "verify_"), and paste it below
-# DO NOT COMMIT THIS TOKEN
-
-ms_token="verify_l8asmszq_gBF6JmmI_1rIN_4sWj_AanT_hGbhrf1GQmIu"
-
-# ###########################################   
-# ###########################################
 
 class EnhancedJSONEncoder(json.JSONEncoder):
         def default(self, o):
@@ -78,8 +62,8 @@ class TikTokHashTagAnalyzer(object):
     tag_occurrences = []
     video_count = 5000
     filename = "none"
-    
-    def __init__(self, hashtag=None, user=None):
+    token = ""
+    def __init__(self, hashtag=None, user=None, token=None):
         super().__init__()
         
         if not hashtag and not user:
@@ -90,7 +74,7 @@ class TikTokHashTagAnalyzer(object):
         
         self.hashtag = hashtag
         self.user = user
-        
+        self.token = token
         self.filename = ""
         self.filename += "U" if user else "H"
         self.filename += f"_{hashtag or user}"
@@ -117,7 +101,7 @@ class TikTokHashTagAnalyzer(object):
         return sorted(hashtags.items(), key=lambda e: e[1], reverse=True)
 
     def get_videos(self, download=False):
-        api = TikTokApi(logging_level=logging.ERROR, custom_verify_fp=ms_token, force_verify_fp_on_cookie_header=True)
+        api = TikTokApi(logging_level=logging.ERROR, custom_verify_fp=self.token, force_verify_fp_on_cookie_header=True)
         if self.hashtag:
             tag = api.hashtag(name=self.hashtag)
             videos = [v for v in tag.videos(count=self.video_count)]
@@ -139,7 +123,7 @@ class TikTokHashTagAnalyzer(object):
                 desc=info["desc"],
                 create_time=str(video.create_time),
                 hashtags=[TikTokHashtag(id=h.id,name=h.name ) for h in video.hashtags],
-                playAddr=info["video"]['playAddr'],
+                playAddr=info["video"].get("playAddr"),
                 stats=VideoStats(**video.stats),
                 author=VideoAuthor(
                     id= author.get("id"),
@@ -256,11 +240,21 @@ if __name__ == "__main__":
 
     search_type=""
     search_term=""
+    token=""
     print("###########################################")
     print("#            TIK TOK SCRAPER              #")
     print("###########################################")
     print("       Press Ctrl+C/ Cmd+C to Exit         ")
-    print()    
+    print()
+    
+    while not token:
+        print("Enter your `s_v_web_id` cookie. see Readme.md for instructions on how to get this value")
+        val =input("s_v_web_id: ")
+        if val:
+            token = val
+        print()
+    print()
+        
     while not search_type:
         print("Lookup By User(U) or HashTag(H)")
         val =input("H / U? : ")
@@ -274,9 +268,9 @@ if __name__ == "__main__":
         search_term = val
     print()
     if search_type == "H":
-        results = TikTokHashTagAnalyzer(hashtag=search_term)
+        results = TikTokHashTagAnalyzer(hashtag=search_term, token=token)
     elif search_type == "U":
-        results = TikTokHashTagAnalyzer(user=search_term)    
+        results = TikTokHashTagAnalyzer(user=search_term, token=token)    
     try:
         with open(f'{search_type}_{search_term}.json') as json_file:
             print(f"Previous Data Found for Search Type {search_type}/ Search Term {search_term}")
@@ -315,7 +309,6 @@ if __name__ == "__main__":
                 should_download = False
         results.get_videos(download=should_download)
     results.get_hashtags()
-    print(results.get_occurrences())
     results.to_csv()
     results.print_occurrences()
     sys.exit()
