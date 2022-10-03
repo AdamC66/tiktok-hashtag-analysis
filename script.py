@@ -2,6 +2,7 @@ from dataclasses import asdict, dataclass, is_dataclass
 from tkinter import Y
 from turtle import down
 from TikTokApi import TikTokApi
+from TikTokApi.exceptions import TikTokException
 import logging
 import json
 import csv
@@ -115,46 +116,49 @@ class TikTokHashTagAnalyzer(object):
                     print("Processing . . .")
                 else:
                     print(f"{idx} Videos processed")
-            info = video.info()
-            author = video.as_dict["author"]
-            sound=video.as_dict["music"]
-            tiktok_video = TikTokVideo(
-                id=video.id,
-                desc=info["desc"],
-                create_time=str(video.create_time),
-                hashtags=[TikTokHashtag(id=h.id,name=h.name ) for h in video.hashtags],
-                playAddr=info["video"].get("playAddr"),
-                stats=VideoStats(**video.stats),
-                author=VideoAuthor(
-                    id= author.get("id"),
-                    uniqueId = author.get("uniqueId"),
-                    nickname= author.get("nickname"),
-                    verified=author.get("verified"),
-                ),
-                sound=VideoSound(
-                    id=sound.get("id"),
-                    title= sound.get("title"),
-                    authorName= sound.get("authorName"),
-                    original= sound.get("original"),
-                    playUrl= sound.get("playUrl"),
+            try:
+                info = video.info()
+                author = video.as_dict["author"]
+                sound=video.as_dict["music"]
+                tiktok_video = TikTokVideo(
+                    id=video.id,
+                    desc=info["desc"],
+                    create_time=str(video.create_time),
+                    hashtags=[TikTokHashtag(id=h.id,name=h.name ) for h in video.hashtags],
+                    playAddr=info["video"].get("playAddr"),
+                    stats=VideoStats(**video.stats),
+                    author=VideoAuthor(
+                        id= author.get("id"),
+                        uniqueId = author.get("uniqueId"),
+                        nickname= author.get("nickname"),
+                        verified=author.get("verified"),
+                    ),
+                    sound=VideoSound(
+                        id=sound.get("id"),
+                        title= sound.get("title"),
+                        authorName= sound.get("authorName"),
+                        original= sound.get("original"),
+                        playUrl= sound.get("playUrl"),
+                    )
                 )
-            )
-            res.append(tiktok_video)
-            
-            if download:
-                self.download_video(video)
-            
-        self.videos = res
-        with open(f'{self.filename}.json', 'w') as outfile:
-            json.dump(res, outfile, cls=EnhancedJSONEncoder)
-    
+                res.append(tiktok_video)
+                
+                if download:
+                    self.download_video(video)
+                
+                self.videos = res
+                with open(f'{self.filename}.json', 'w') as outfile:
+                    json.dump(res, outfile, cls=EnhancedJSONEncoder)
+            except TikTokException as e:
+                print(f"Error Processing Video: {video.id} continuing anyway")    
     def download_video(self, video):
-       
-        video_data = video.bytes()
-        video_name = video.id
-        with open(f"{video_name}.mp4", "wb") as out_file:
-            out_file.write(video_data)
-    
+       try:
+            video_data = video.bytes()
+            video_name = video.id
+            with open(f"{video_name}.mp4", "wb") as out_file:
+                out_file.write(video_data)
+       except TikTokException as e:
+           print(f"Error Processing Video: {video.id} continuing anyway")    
     def get_occurrences(self):
         occs = {"total": len(self.videos), "top_n": []}
         occs["top_n"] = [[ele[i] for ele in self.tags[0 : min(len(self.videos), 10)]] for i in range(2)]
