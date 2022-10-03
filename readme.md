@@ -82,8 +82,8 @@ H / U? : H
 You will then be asked to enter your search term, there is no need to add @ or # for hashtags/ users respectively.
 
 ```
-Lookup By User(U) or HashTag(H)
-H / U? : H
+Enter Search Term
+Search : foryoupage
 ```
 
 OPTIONAL:
