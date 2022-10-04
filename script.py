@@ -206,7 +206,7 @@ class TikTokHashTagAnalyzer(object):
                     "Comment Count",
                     # Links
                     "Play Address",
-                    "Sound Url"
+                    "Sound Url",
                   ]
             writer.writerow(header)
             for entry in self.videos:
@@ -221,16 +221,16 @@ class TikTokHashTagAnalyzer(object):
                         entry.get("desc", ""),
                         ", ".join(h["name"] for h in entry.get("hashtags", [])),
                         entry.get("create_time", ""),
-                        author.get("id"),
-                        author.get("uniqueId"),
-                        author.get("nickname"),
-                        author.get("verified"),
+                        author.get("id", ""),
+                        author.get("uniqueId", ""),
+                        author.get("nickname", ""),
+                        author.get("verified", ""),
                         
-                        sound.get("id"),
-                        sound.get("title"),
-                        sound.get("authorName"),
-                        sound.get("original"),
-                    
+                        sound.get("id", ""),
+                        sound.get("title", ""),
+                        sound.get("authorName", ""),
+                        sound.get("original", ""),
+                        
                         stats.get("playCount",""),
                         stats.get("shareCount",""),
                         stats.get("commentCount",""),
