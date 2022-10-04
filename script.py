@@ -150,7 +150,9 @@ class TikTokHashTagAnalyzer(object):
                 with open(f'{self.filename}.json', 'w') as outfile:
                     json.dump(res, outfile, cls=EnhancedJSONEncoder)
             except TikTokException as e:
-                print(f"Error Processing Video: {video.id} continuing anyway")    
+                print(f"Error Processing Video: {video.id} continuing anyway")  
+            except Exception as e:
+                print(f"Error Processing Video: {video.id} - {str(e)}, continuing anyway")  
     def download_video(self, video):
        try:
             video_data = video.bytes()
